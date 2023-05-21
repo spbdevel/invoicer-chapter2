@@ -13,7 +13,7 @@ fail() {
 export AWS_DEFAULT_REGION=${AWS_REGION:-us-east-1}
 
 datetag=$(date +%Y%m%d%H%M)
-identifier=$(whoami)ivcr$datetag
+identifier=staniivcr$datetag
 mkdir -p tmp/$identifier
 
 echo "Creating EBS application $identifier"
@@ -32,9 +32,10 @@ dbsg=$(jq -r '.GroupId' tmp/$identifier/dbsg.json)
 echo "DB security group is $dbsg"
 
 # Create the database
-dbinstclass="db.t2.micro"
+dbinstclass="db.t3.micro"
 dbstorage=5
-dbpass=$(dd if=/dev/urandom bs=128 count=1 2>/dev/null| tr -dc _A-Z-a-z-0-9)
+#dbpass=$(dd if=/dev/urandom bs=128 count=1 2>/dev/null| tr -dc _A-Z-a-z-0-9)
+dbpass=tigraa123
 aws rds create-db-instance \
     --db-name invoicer \
     --db-instance-identifier "$identifier" \
@@ -42,7 +43,7 @@ aws rds create-db-instance \
     --allocated-storage "$dbstorage" \
     --db-instance-class "$dbinstclass" \
     --engine postgres \
-    --engine-version 9.6.2 \
+    --engine-version 14.6 \
     --auto-minor-version-upgrade \
     --publicly-accessible \
     --master-username invoicer \
@@ -67,7 +68,7 @@ aws rds add-tags-to-resource \
     --tags "Key=environment-name,Value=invoicer-api"
 aws rds add-tags-to-resource \
     --resource-name $(jq -r '.DBInstances[0].DBInstanceArn' tmp/$identifier/rds.json) \
-    --tags "Key=Owner,Value=$(whoami)"
+    --tags "Key=Owner,Value=Stan"
 
 # Create an elasticbeantalk application
 aws elasticbeanstalk create-application \
@@ -77,21 +78,30 @@ echo "ElasticBeanTalk application created"
 
 # Get the name of the latest Docker solution stack
 dockerstack="$(aws elasticbeanstalk list-available-solution-stacks | \
-    jq -r '.SolutionStacks[]' | grep -P '.+Amazon Linux.+running Docker.+' | head -1)"
+    jq -r '.SolutionStacks[]' | grep  'Amazon Linux.*Docker' | head -1)"
 
 # Create the EB API environment
 sed "s/POSTGRESPASSREPLACEME/$dbpass/" ebs-options.json > tmp/$identifier/ebs-options.json || fail
 sed -i "s/POSTGRESHOSTREPLACEME/$dbhost/" tmp/$identifier/ebs-options.json || fail
 aws elasticbeanstalk create-environment \
-    --application-name $identifier \
-    --environment-name $identifier-invoicer-api \
-    --description "Invoicer API environment" \
-    --tags "Key=Owner,Value=$(whoami)" \
-    --solution-stack-name "$dockerstack" \
-    --option-settings file://tmp/$identifier/ebs-options.json \
-    --tier "Name=WebServer,Type=Standard,Version=''" > tmp/$identifier/ebcreateapienv.json || fail
+--region us-east-1 \
+--application-name $identifier \
+--environment-name $identifier-invoicer-api \
+--solution-stack-name "$dockerstack" \
+--tags "Key=Owner,Value=stani" \
+--option-settings \
+Namespace=aws:autoscaling:launchconfiguration,OptionName=IamInstanceProfile,Value=aws-elasticbeanstalk-ec2-role \
+Namespace=aws:ec2:instances,OptionName=InstanceTypes,Value=t4g.small \
+--tier "Name=WebServer,Type=Standard,Version=''" > tmp/$identifier/ebcreateapienv.json || fail
+
+## todo  should be delay between create and update
+aws elasticbeanstalk update-environment \
+--region us-east-1 \
+--application-name $identifier \
+--environment-name $identifier-invoicer-api \
+--solution-stack-name "$dockerstack" \
+--option-settings file://./tmp/$identifier/ebs-options.json
 apieid=$(jq -r '.EnvironmentId' tmp/$identifier/ebcreateapienv.json)
-echo "API environment $apieid is being created"
 
 # grab the instance ID of the API environment, then its security group, and add that to the RDS security group
 while true;

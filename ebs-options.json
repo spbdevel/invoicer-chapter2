@@ -28,5 +28,15 @@
         "Namespace": "aws:elasticbeanstalk:application:environment", 
         "OptionName": "INVOICER_POSTGRES_SSLMODE", 
         "Value": "disable"
+    },
+    {
+        "Namespace": "aws:elasticbeanstalk:application:environment",
+        "OptionName": "IamInstanceProfile",
+        "Value": "aws-elasticbeanstalk-ec2-role"
+    },
+    {
+        "Namespace": "aws:ec2:instances",
+        "OptionName": "InstanceTypes",
+        "Value": "t4g.small"
     }
 ]
