@@ -1,4 +1,4 @@
-FROM --platform=linux/amd64 golang:latest
+FROM --platform=linux/arm64/v8 golang:latest
 RUN addgroup --gid 10001 app
 RUN adduser --gid 10001 --uid 10001 \
     --home /app --shell /sbin/nologin \
