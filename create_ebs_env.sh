@@ -34,8 +34,7 @@ echo "DB security group is $dbsg"
 # Create the database
 dbinstclass="db.t3.micro"
 dbstorage=5
-#dbpass=$(dd if=/dev/urandom bs=128 count=1 2>/dev/null| tr -dc _A-Z-a-z-0-9)
-dbpass=tigraa123
+dbpass=$(dd if=/dev/urandom bs=128 count=1 2>/dev/null| tr -dc _A-Z-a-z-0-9)
 aws rds create-db-instance \
     --db-name invoicer \
     --db-instance-identifier "$identifier" \
@@ -100,7 +99,7 @@ aws elasticbeanstalk update-environment \
 --application-name $identifier \
 --environment-name $identifier-invoicer-api \
 --solution-stack-name "$dockerstack" \
---option-settings file://./tmp/$identifier/ebs-options.json
+--option-settings file://./tmp/$identifier/ebs-options.json > tmp/$identifier/ebcreateapienv.json
 apieid=$(jq -r '.EnvironmentId' tmp/$identifier/ebcreateapienv.json)
 
 # grab the instance ID of the API environment, then its security group, and add that to the RDS security group

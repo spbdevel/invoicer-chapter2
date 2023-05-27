@@ -47,6 +47,7 @@ You can then pull and run the container from your repository as follows:
 
 ```bash
 $ docker run -it <MyGitHubUser>/invoicer
+docker run --rm -p 8080:8080 spbdevel/invoicer-chapter2:latest
 ```
 
 Build the AWS infrastructure
